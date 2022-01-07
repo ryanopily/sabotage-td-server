@@ -1,32 +1,29 @@
 package ml.zer0dasho.std.net.packets;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 import ml.zer0dasho.mcserver.net.VarInt;
-import ml.zer0dasho.mcserver.net.packets.MinecraftPacketProcessor;
-import ml.zer0dasho.mcserver.net.packets.MinecraftPacket.WriteablePacket;
+import ml.zer0dasho.mcserver.net.packets.MinecraftPacket;
 
-public class STDPacketProcessor implements MinecraftPacketProcessor {
+public class STDPacketProcessor {
 	
 	private int messageSize;
 	private ByteArrayOutputStream partialMessage;
 	
 	private List<ByteBuffer> received = new ArrayList<ByteBuffer>();
 
-	@Override
 	public List<ByteBuffer> received() {
 		return this.received;
 	}
 
-	@Override
-	public ByteBuffer writeOut(WriteablePacket packet) {
+	public ByteBuffer writeOut(MinecraftPacket packet) throws IOException {
 		return packet.encode();
 	}
 
-	@Override
 	public boolean readIn(ByteBuffer messageFragment) {
 		// Start reading new partial message
 		if(partialMessage == null) {

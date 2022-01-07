@@ -5,24 +5,25 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import ml.zer0dasho.mcserver.net.MinecraftConnection;
+import ml.zer0dasho.mcserver.net.MinecraftConnection.ConnectionState;
 import ml.zer0dasho.mcserver.net.VarInt;
-import ml.zer0dasho.mcserver.net.Connection.ConnectionState;
-import ml.zer0dasho.mcserver.net.packets.MinecraftPacketManager;
-import ml.zer0dasho.mcserver.net.packets.MinecraftPacket.ReadablePacket;
+import ml.zer0dasho.mcserver.net.packets.MinecraftPacket;
+import ml.zer0dasho.mcserver.net.packets.UnknownPacket;
 import ml.zer0dasho.mcserver.net.packets.handshaking.in.Handshake;
 import ml.zer0dasho.mcserver.net.packets.login.in.LoginStart;
 
-public class STDPacketManager implements MinecraftPacketManager {
+public class STDPacketManager {
 
-	public static final Map<ConnectionState, Map<Integer, Function<ByteBuffer, ReadablePacket>>> PACKET_REGISTRY = new HashMap<>() {
+	public static final Map<ConnectionState, Map<Integer, Function<ByteBuffer, MinecraftPacket>>> PACKET_REGISTRY = new HashMap<>() {
 		
 		private static final long serialVersionUID = 1L;
 		
 		{
-			Map<Integer, Function<ByteBuffer, ReadablePacket>> HANDSHAKING = new HashMap<>();
+			Map<Integer, Function<ByteBuffer, MinecraftPacket>> HANDSHAKING = new HashMap<>();
 			HANDSHAKING.put(0, Handshake::new);
 			
-			Map<Integer, Function<ByteBuffer, ReadablePacket>> LOGIN = new HashMap<>();
+			Map<Integer, Function<ByteBuffer, MinecraftPacket>> LOGIN = new HashMap<>();
 			LOGIN.put(0, LoginStart::new);
 			
 			this.put(ConnectionState.HANDSHAKING, HANDSHAKING);
@@ -30,16 +31,26 @@ public class STDPacketManager implements MinecraftPacketManager {
 		}
 	};
 	
-	public ReadablePacket getPacket(ByteBuffer packetData, ConnectionState connectionState) {
-		Map<Integer, Function<ByteBuffer, ReadablePacket>> map = PACKET_REGISTRY.get(connectionState);
+	public static MinecraftPacket getPacket(ByteBuffer packetData, MinecraftConnection connection) {
+		Map<Integer, Function<ByteBuffer, MinecraftPacket>> map = PACKET_REGISTRY.get(connection.state);
 		
 		int type[] = new int[2];
 		VarInt.getVarInt(packetData.array(), 0, type);
 
 		if(map == null || !map.containsKey(type[1]))
-			return new ReadablePacket(packetData);
+			return new UnknownPacket(packetData);
 
-		return map.get(type[1]).apply(packetData);
+		MinecraftPacket result = map.get(type[1]).apply(packetData);
+		
+		if(result instanceof Handshake) {
+			connection.state = ConnectionState.LOGIN;
+		}
+		
+		else if(result instanceof LoginStart) {
+			connection.state = ConnectionState.PLAY;
+		}
+		
+		return result;
 	}
 
 }

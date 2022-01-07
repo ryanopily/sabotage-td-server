@@ -9,51 +9,44 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import ml.zer0dasho.mcserver.net.Connection;
-import ml.zer0dasho.mcserver.net.packets.MinecraftPacketManager;
-import ml.zer0dasho.mcserver.net.packets.MinecraftPacket.ReadablePacket;
-import ml.zer0dasho.mcserver.net.packets.MinecraftPacket.WriteablePacket;
+import ml.zer0dasho.mcserver.net.MinecraftConnection;
+import ml.zer0dasho.mcserver.net.packets.MinecraftPacket;
 
 public abstract class MinecraftServer extends Server {
 	
-	public MinecraftPacketManager packetManager;
-	public final Map<SocketChannel, Connection> connections;
+	public long ticks;
+	public Map<SocketChannel, MinecraftConnection> connections;
 	
-	public boolean running;
+	private long lastTime;
+	private long delta;
 
-	public MinecraftServer(MinecraftPacketManager packetManager) throws IOException {
-		this(new InetSocketAddress(InetAddress.getLocalHost(), DEFAULT_PORT), packetManager);
+	public MinecraftServer() throws IOException {
+		this(new InetSocketAddress(InetAddress.getLocalHost(), DEFAULT_PORT));
 	}
 	
 	
-	public MinecraftServer(InetSocketAddress address, MinecraftPacketManager packetManager) throws IOException  {
+	public MinecraftServer(InetSocketAddress address) throws IOException  {
 		super(address);
 		
 		this.connections = new HashMap<>();
-		this.packetManager = packetManager;
 	}
 	
 	@Override
 	protected void accept(SocketChannel client) throws IOException {
 		client.configureBlocking(false);
 		client.register(this.selector, client.validOps());
-		
-		registerConnection(client);
 	}
-	
-	protected abstract void registerConnection(SocketChannel client);
 	
 	@Override
 	protected void read(SocketChannel client) throws IOException {
-		Connection connection = this.connections.get(client);
+		MinecraftConnection connection = this.connections.get(client);
 
 		if(!readPacket(client, connection))
 			return;
 
-		Iterator<ByteBuffer> packets = connection.packetProcessor.received().iterator();
+		Iterator<MinecraftPacket> packets = connection.receivePackets();
 		while(packets.hasNext()) {
-			ReadablePacket packet = packetManager.getPacket(packets.next(), connection.state);
-			packet.apply(connection);
+			MinecraftPacket packet = packets.next();
 			
 			System.out.println(packet);
 			
@@ -61,28 +54,39 @@ public abstract class MinecraftServer extends Server {
 		}
 	}
 	
-	private boolean readPacket(SocketChannel client, Connection connection) throws IOException {
+	private boolean readPacket(SocketChannel client, MinecraftConnection connection) throws IOException {
 		ByteBuffer buffer = ByteBuffer.allocate(1024);
 		client.read(buffer);
 		buffer.flip();
 		
-		return buffer.limit() > 0 && connection.packetProcessor.readIn(buffer);
+		return buffer.limit() > 0 && connection.receivePacket(buffer);
+	}
+
+	@Override
+	protected void write(SocketChannel client) throws IOException {
+		if(client == null) return;
+		MinecraftConnection connection = this.connections.get(client);
+		connection.sendPackets(client);
 	}
 	
 	@Override
-	protected void write(SocketChannel client) throws IOException {
-		Connection conn = this.connections.get(client);
+	protected void init() {
+		this.lastTime = this.startTime;
+	}
+	
+	@Override
+	protected void loop() {
+		long currentTime = System.nanoTime();
+		this.delta += (currentTime - lastTime);
 		
-		Iterator<WriteablePacket> packets = conn.out.iterator();
-		while(packets.hasNext()) {
-			WriteablePacket packet = packets.next();
-			packet.apply(conn);
-			
-			client.write(packet.encode());
-			
-			packets.remove();
+		if(this.delta >= TICK_LENGTH) {
+			this.ticks++;
+			this.delta = 0;
 		}
+		
+		this.lastTime = currentTime;
 	}
 	
 	public static final int DEFAULT_PORT = 25565;
+	public static final long TICK_LENGTH = 1_000_000_000 / 20;
 }

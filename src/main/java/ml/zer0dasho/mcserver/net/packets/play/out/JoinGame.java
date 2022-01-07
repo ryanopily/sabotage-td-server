@@ -1,20 +1,58 @@
 package ml.zer0dasho.mcserver.net.packets.play.out;
 
-import ml.zer0dasho.mcserver.net.packets.MinecraftPacket.WriteablePacket;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-public class JoinGame extends WriteablePacket {
+import ml.zer0dasho.mcserver.net.NetUtils;
+import ml.zer0dasho.mcserver.net.VarInt;
+import ml.zer0dasho.mcserver.net.packets.MinecraftPacket;
 
-	public JoinGame() {
-		String level = "default";
+public class JoinGame extends MinecraftPacket {
+
+	public final int ID = 0x01;
+	
+	public int entity_id;
+	public byte gamemode;
+	public byte dimension;
+	public byte difficulty;
+	public byte max_players;
+	public String level_type;
+	public boolean reduced_debug_info;
+
+	@Override
+	public void decode(ByteBuffer buffer) throws IOException {
+		VarInt.getVarInt(buffer);
+		VarInt.getVarInt(buffer);
 		
-		this.writeVarInt(0x01);
-		this.writeInt(69);
-		this.writeByte((byte)0);
-		this.writeByte((byte)0);
-		this.writeByte((byte)0);
-		this.writeByte((byte)1);
-		this.writeUTF8(level);
-		this.writeByte((byte)0);
+		this.entity_id = buffer.getInt();
+		this.gamemode = buffer.get();
+		this.dimension = buffer.get();
+		this.difficulty = buffer.get();
+		this.max_players = buffer.get();
+		this.level_type = NetUtils.readUTF8(buffer);
+		this.reduced_debug_info = buffer.get() == 0 ? false : true;
+	}
+
+	@Override
+	public ByteBuffer encode() throws IOException {
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		ByteArrayOutputStream result = new ByteArrayOutputStream();
+		
+		VarInt.putVarInt(ID, result);
+		result.write(ByteBuffer.allocate(Integer.BYTES).putInt(entity_id).array());
+		result.write(gamemode);
+		result.write(dimension);
+		result.write(difficulty);
+		result.write(max_players);
+		result.write(NetUtils.writeUTF8(level_type));
+		result.write((byte) (reduced_debug_info ? 1 : 0));
+		
+	
+		VarInt.putVarInt(result.size(), bos);
+		result.writeTo(bos);
+		
+		return ByteBuffer.wrap(bos.toByteArray());
 	}
 	
 }

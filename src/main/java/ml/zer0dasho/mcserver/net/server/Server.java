@@ -13,7 +13,8 @@ public abstract class Server implements Runnable {
 	public final Selector selector;
 	public final ServerSocketChannel socket;
 	public final InetSocketAddress address;
-	
+
+	public long startTime, endTime;
 	public boolean running;
 	
 	public Server(InetSocketAddress address) throws IOException {		
@@ -21,6 +22,7 @@ public abstract class Server implements Runnable {
 		this.selector = Selector.open();
 		this.socket = ServerSocketChannel.open();
 		
+		// Configure and register socket with selector
 		socket.configureBlocking(false);
 		socket.bind(address);
 		socket.register(selector, socket.validOps());
@@ -29,9 +31,14 @@ public abstract class Server implements Runnable {
 	@Override
 	public void run() {
 		running = true;
+		startTime = System.nanoTime();
+		
+		init();
 		
 		while(running) {
-			try {
+			try {			
+				
+				loop();
 				
 				if(selector.selectNow() <= 0)
 					continue;
@@ -39,15 +46,19 @@ public abstract class Server implements Runnable {
 				Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
 				while(keys.hasNext()) {
 					SelectionKey key = keys.next();
+					SocketChannel client = null;
 
-					if(key.isAcceptable())
-						accept(this.socket.accept());
+					if(key.isAcceptable()) {
+						if((client = this.socket.accept()) != null)
+							accept(client);
+					}
 					
-					if(key.isReadable())
-						read((SocketChannel)key.channel());
+					if(key.isReadable() && (client = (SocketChannel) key.channel()) != null)
+						read(client);
+							
+					if(key.isWritable() && (client = (SocketChannel) key.channel()) != null)
+						write(client);
 					
-					if(key.isWritable())
-						write((SocketChannel)key.channel());
 
 					keys.remove();
 				}
@@ -57,8 +68,12 @@ public abstract class Server implements Runnable {
 				ex.printStackTrace();
 			}
 		}
+		
+		endTime = System.nanoTime();
 	}
 	
+	protected abstract void init();
+	protected abstract void loop();
 	protected abstract void accept(SocketChannel client) throws IOException;
 	protected abstract void read(SocketChannel client) throws IOException;
 	protected abstract void write(SocketChannel client) throws IOException;
