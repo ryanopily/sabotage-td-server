@@ -12,6 +12,10 @@ public class Disconnect extends MinecraftPacket {
 	
 	public final int ID = 0x00;
 	public String reason;
+	
+	public Disconnect(String reason) {
+		this.reason = reason;
+	}
 
 	@Override
 	public void decode(ByteBuffer buffer) throws IOException {
@@ -25,13 +29,12 @@ public class Disconnect extends MinecraftPacket {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
 		
-		result.write(NetUtils.writeUTF8(reason));
+		VarInt.putVarInt(ID, result);
+		result.write(NetUtils.writeUTF8s(reason));
 		
-		VarInt.putVarInt(ID, bos);
 		VarInt.putVarInt(result.size(), bos);
 		result.writeTo(bos);
 		
 		return ByteBuffer.wrap(bos.toByteArray());
-	}
-	
+	}	
 }

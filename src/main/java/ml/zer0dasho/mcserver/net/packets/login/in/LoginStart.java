@@ -17,7 +17,6 @@ public class LoginStart extends MinecraftPacket {
 		try {
 			this.decode(buffer);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -44,7 +43,7 @@ public class LoginStart extends MinecraftPacket {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
 		
-		result.write(NetUtils.writeUTF8(this.name));
+		result.write(NetUtils.writeUTF8s(this.name));
 		
 		VarInt.putVarInt(ID, bos);
 		VarInt.putVarInt(result.size(), bos);

@@ -30,15 +30,16 @@ public abstract class Server implements Runnable {
 	
 	@Override
 	public void run() {
-		running = true;
-		startTime = System.nanoTime();
 		
-		init();
+		// Initialize server properties
+		this.running = true;
+		this.startTime = System.nanoTime();
+		this.initialize();
 		
 		while(running) {
 			try {			
 				
-				loop();
+				this.serverLoop();
 				
 				if(selector.selectNow() <= 0)
 					continue;
@@ -58,7 +59,6 @@ public abstract class Server implements Runnable {
 							
 					if(key.isWritable() && (client = (SocketChannel) key.channel()) != null)
 						write(client);
-					
 
 					keys.remove();
 				}
@@ -72,8 +72,8 @@ public abstract class Server implements Runnable {
 		endTime = System.nanoTime();
 	}
 	
-	protected abstract void init();
-	protected abstract void loop();
+	protected abstract void initialize();
+	protected abstract void serverLoop();
 	protected abstract void accept(SocketChannel client) throws IOException;
 	protected abstract void read(SocketChannel client) throws IOException;
 	protected abstract void write(SocketChannel client) throws IOException;

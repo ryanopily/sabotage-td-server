@@ -11,16 +11,14 @@ import ml.zer0dasho.mcserver.net.packets.MinecraftPacket;
 public class Handshake extends MinecraftPacket {
 	
 	public final int ID = 0x00;
-	public int protocol_version;
-	public String server_address;
-	public short server_port;
-	public int next_state;
+	public String serverAddress;
+	public short serverPort;
+	public int protocolVersion, nextState;
 	
 	public Handshake(ByteBuffer packetData) {
 		try {
 			this.decode(packetData);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -35,10 +33,10 @@ public class Handshake extends MinecraftPacket {
 							+ "address: %s\n"
 							+ "port: %d\n"
 							+ "state: %d\n", 
-						protocol_version,
-						server_address,
-						server_port,
-						next_state
+						protocolVersion,
+						serverAddress,
+						serverPort,
+						nextState
 				);
 	}
 
@@ -46,10 +44,10 @@ public class Handshake extends MinecraftPacket {
 	public void decode(ByteBuffer buffer) throws IOException {
 		VarInt.getVarInt(buffer); // length
 		VarInt.getVarInt(buffer); // ID
-		this.protocol_version = VarInt.getVarInt(buffer);
-		this.server_address = NetUtils.readUTF8(buffer);
-		this.server_port = buffer.getShort();
-		this.next_state = VarInt.getVarInt(buffer);
+		this.protocolVersion = VarInt.getVarInt(buffer);
+		this.serverAddress = NetUtils.readUTF8(buffer);
+		this.serverPort = buffer.getShort();
+		this.nextState = VarInt.getVarInt(buffer);
 		
 	}
 	@Override
@@ -57,10 +55,10 @@ public class Handshake extends MinecraftPacket {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
 		
-		VarInt.putVarInt(protocol_version, result);
-		result.write(NetUtils.writeUTF8(server_address));
-		result.write(ByteBuffer.allocate(Short.BYTES).putShort(server_port).get());
-		VarInt.putVarInt(next_state, result);
+		VarInt.putVarInt(protocolVersion, result);
+		result.write(NetUtils.writeUTF8s(serverAddress));
+		result.write(ByteBuffer.allocate(Short.BYTES).putShort(serverPort).get());
+		VarInt.putVarInt(nextState, result);
 		
 		VarInt.putVarInt(ID, bos);
 		VarInt.putVarInt(result.size(), bos);

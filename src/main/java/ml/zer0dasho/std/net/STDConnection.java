@@ -50,7 +50,6 @@ public class STDConnection extends MinecraftConnection {
 	public void sendPackets(SocketChannel client) {
 		toSend.forEach(packet -> {
 			try {
-				System.out.println("Sending " + packet.getClass().getSimpleName());
 				client.write(packet.encode());
 			} catch (IOException e) {
 				// TODO Auto-generated catch block

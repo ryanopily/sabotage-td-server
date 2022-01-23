@@ -11,8 +11,12 @@ import ml.zer0dasho.mcserver.net.packets.MinecraftPacket;
 public class LoginSuccess extends MinecraftPacket {
 	
 	public final int ID = 0x02;
-	public String UUID;
-	public String username;
+	public String UUID, username;
+	
+	public LoginSuccess(String UUID, String username) {
+		this.UUID = UUID;
+		this.username = username;
+	}
 
 	@Override
 	public void decode(ByteBuffer buffer) throws IOException {
@@ -28,8 +32,8 @@ public class LoginSuccess extends MinecraftPacket {
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
 		
 		VarInt.putVarInt(ID, result);
-		result.write(NetUtils.writeUTF8(UUID));
-		result.write(NetUtils.writeUTF8(username));
+		result.write(NetUtils.writeUTF8s(UUID));
+		result.write(NetUtils.writeUTF8s(username));
 		
 		VarInt.putVarInt(result.size(), bos);
 		result.writeTo(bos);

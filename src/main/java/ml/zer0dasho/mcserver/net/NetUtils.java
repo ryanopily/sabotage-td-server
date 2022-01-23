@@ -14,11 +14,43 @@ public class NetUtils {
 		return new String(string);
 	}
 	
-	public static byte[] writeUTF8(String value) throws IOException {
+	public static byte[] writeChars(char...values) {
+		ByteBuffer buffer = ByteBuffer.allocate(Character.BYTES * values.length);
+		
+		for(char value : values) {
+			buffer.putChar(value);
+		}
+		
+		return buffer.array();
+	}
+	
+	public static byte[] writeShorts(short...values) {
+		ByteBuffer buffer = ByteBuffer.allocate(Short.BYTES * values.length);
+		
+		for(short value : values)
+			buffer.putShort(value);
+		
+		return buffer.array();
+	}
+	
+	public static byte[] writeInts(int...values) {
+		ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * values.length);
+		
+		for(int value : values) 
+			buffer.putInt(value);
+		
+		return buffer.array();
+	}
+	
+	public static byte[] writeUTF8s(String...values) throws IOException {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-        VarInt.putVarInt(bytes.length, bos);
-        bos.write(bytes);
+		
+		for(String value : values) {
+	        final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+	        VarInt.putVarInt(bytes.length, bos);
+	        bos.write(bytes);
+		}
+		
         return bos.toByteArray();
 	}
 	
@@ -40,4 +72,16 @@ public class NetUtils {
 		return buffer.array();
 	}
 	
+	public static byte[] writeLongs(long...values) {
+		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * values.length);
+		
+		for(long value : values) 
+			buffer.putLong(value);
+		
+		return buffer.array();
+	}
+	
+	public static long position(int x, int y, int z) {
+		return ((x & 0x3FFFFFF) << 38) | ((z & 0x3FFFFFF) << 12) | (y & 0xFFF);
+	}
 }

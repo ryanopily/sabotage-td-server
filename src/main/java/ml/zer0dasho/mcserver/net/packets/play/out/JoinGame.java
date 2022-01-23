@@ -12,26 +12,34 @@ public class JoinGame extends MinecraftPacket {
 
 	public final int ID = 0x01;
 	
-	public int entity_id;
-	public byte gamemode;
-	public byte dimension;
-	public byte difficulty;
-	public byte max_players;
-	public String level_type;
-	public boolean reduced_debug_info;
+	public String levelType;
+	public int entityId;
+	public boolean reducedDebugInfo;
+	public byte gamemode, dimension, difficulty, maxPlayers;
+
+	public JoinGame(String levelType, int entityId, boolean reducedDebugInfo, byte gamemode, byte dimension,
+			byte difficulty, byte maxPlayers) {
+		this.levelType = levelType;
+		this.entityId = entityId;
+		this.reducedDebugInfo = reducedDebugInfo;
+		this.gamemode = gamemode;
+		this.dimension = dimension;
+		this.difficulty = difficulty;
+		this.maxPlayers = maxPlayers;
+	}
 
 	@Override
 	public void decode(ByteBuffer buffer) throws IOException {
 		VarInt.getVarInt(buffer);
 		VarInt.getVarInt(buffer);
 		
-		this.entity_id = buffer.getInt();
+		this.entityId = buffer.getInt();
 		this.gamemode = buffer.get();
 		this.dimension = buffer.get();
 		this.difficulty = buffer.get();
-		this.max_players = buffer.get();
-		this.level_type = NetUtils.readUTF8(buffer);
-		this.reduced_debug_info = buffer.get() == 0 ? false : true;
+		this.maxPlayers = buffer.get();
+		this.levelType = NetUtils.readUTF8(buffer);
+		this.reducedDebugInfo = buffer.get() == 0 ? false : true;
 	}
 
 	@Override
@@ -40,15 +48,14 @@ public class JoinGame extends MinecraftPacket {
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
 		
 		VarInt.putVarInt(ID, result);
-		result.write(ByteBuffer.allocate(Integer.BYTES).putInt(entity_id).array());
+		result.write(NetUtils.writeInts(entityId));
 		result.write(gamemode);
 		result.write(dimension);
 		result.write(difficulty);
-		result.write(max_players);
-		result.write(NetUtils.writeUTF8(level_type));
-		result.write((byte) (reduced_debug_info ? 1 : 0));
+		result.write(maxPlayers);
+		result.write(NetUtils.writeUTF8s(levelType));
+		result.write((byte) (reducedDebugInfo ? 1 : 0));
 		
-	
 		VarInt.putVarInt(result.size(), bos);
 		result.writeTo(bos);
 		

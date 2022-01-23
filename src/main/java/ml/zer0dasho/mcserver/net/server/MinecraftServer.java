@@ -8,48 +8,90 @@ import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import ml.zer0dasho.mcserver.net.MinecraftConnection;
 import ml.zer0dasho.mcserver.net.packets.MinecraftPacket;
 
+/**
+ * MinecraftServer outlines the bare-minimum requirements for a server. 
+ * No extra bloat included.
+ * 
+ * @author ryans
+ *
+ */
 public abstract class MinecraftServer extends Server {
 	
+	// Server-life in ticks
 	public long ticks;
-	public Map<SocketChannel, MinecraftConnection> connections;
+	private long lastTime, delta;
 	
-	private long lastTime;
-	private long delta;
+	// Support for scheduling tasks is a must.
+	public final MinecraftScheduler scheduler;
+	public final Map<SocketChannel, MinecraftConnection> connections;
 
-	public MinecraftServer() throws IOException {
-		this(new InetSocketAddress(InetAddress.getLocalHost(), DEFAULT_PORT));
+	public MinecraftServer(MinecraftScheduler scheduler) throws IOException {
+		this(scheduler, new InetSocketAddress(InetAddress.getLocalHost(), DEFAULT_PORT));
 	}
 	
-	
-	public MinecraftServer(InetSocketAddress address) throws IOException  {
+	public MinecraftServer( MinecraftScheduler scheduler, InetSocketAddress address) throws IOException  {
 		super(address);
 		
+		this.scheduler = scheduler;
 		this.connections = new HashMap<>();
+	}
+	
+	// PUBLIC API
+	
+	public void scheduleLater(int waitTicks, Supplier<Boolean> task) {
+		scheduler.scheduleLater(waitTicks, task);
+	}
+	
+	public void scheduleCycle(int cycleTicks, Supplier<Boolean> task) {
+		scheduler.scheduleCycle(cycleTicks, task);
+	}
+	
+	// PROTECTED API
+	
+	@Override
+	protected void initialize() {
+		this.lastTime = super.startTime;
+	}
+	
+	@Override
+	protected void serverLoop() {
+		long currentTime = System.nanoTime();
+		this.delta += (currentTime - this.lastTime);
+		
+		if(this.delta >= TICK_LENGTH) {
+			this.ticks++;
+			this.delta = 0;
+			
+			this.scheduler.run();
+		}
+
+		this.lastTime = currentTime;
 	}
 	
 	@Override
 	protected void accept(SocketChannel client) throws IOException {
 		client.configureBlocking(false);
 		client.register(this.selector, client.validOps());
+		connections.put(client, registerConnection(client));
 	}
+	
+	protected abstract MinecraftConnection registerConnection(SocketChannel client);
 	
 	@Override
 	protected void read(SocketChannel client) throws IOException {
-		MinecraftConnection connection = this.connections.get(client);
-
-		if(!readPacket(client, connection))
+		MinecraftConnection connection = connections.get(client);
+		
+		if(connection == null || !readPacket(client, connection))
 			return;
 
 		Iterator<MinecraftPacket> packets = connection.receivePackets();
 		while(packets.hasNext()) {
-			MinecraftPacket packet = packets.next();
-			
-			System.out.println(packet);
-			
+			packets.next();
 			packets.remove();
 		}
 	}
@@ -68,25 +110,7 @@ public abstract class MinecraftServer extends Server {
 		MinecraftConnection connection = this.connections.get(client);
 		connection.sendPackets(client);
 	}
-	
-	@Override
-	protected void init() {
-		this.lastTime = this.startTime;
-	}
-	
-	@Override
-	protected void loop() {
-		long currentTime = System.nanoTime();
-		this.delta += (currentTime - lastTime);
-		
-		if(this.delta >= TICK_LENGTH) {
-			this.ticks++;
-			this.delta = 0;
-		}
-		
-		this.lastTime = currentTime;
-	}
-	
+
 	public static final int DEFAULT_PORT = 25565;
 	public static final long TICK_LENGTH = 1_000_000_000 / 20;
 }
